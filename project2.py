@@ -1,6 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as pyplot
-import matplotlib.cm as cm
 from random import randint
 from obj import mine, inferenceProbability
 
@@ -98,9 +96,7 @@ def playMineSweeperAgent1(referenceBoard, dim, totalMines = None):
     visited = list()
     turn = 1
     while(not allNodesIdentified(newGame)):
-        file.write("  ----- Turn " + str(turn) + " -----\n\n")
-        file.write("total mines open: " + str(len(mineNodes)) + "\n\n")
-        writeGridToFile(newGame)
+        # print(len(iterateNodes))
         x= None
         y=None
         if (iterateNodes):
@@ -112,6 +108,7 @@ def playMineSweeperAgent1(referenceBoard, dim, totalMines = None):
             while (not newGame[x][y] == -2): # making sure the new one we go to is a non identified one
                 x = randint(0, dim-1)
                 y = randint(0, dim-1)
+            visited.append((x,y))
         
         # check if it is a mine:
         if (referenceBoard[x][y] == -1):
@@ -120,7 +117,7 @@ def playMineSweeperAgent1(referenceBoard, dim, totalMines = None):
             mineNode = mine((x,y), True)
             mineNodes.append(mineNode)
             if (totalMines):
-                if (totalMines >= len(mineNodes)):
+                if (totalMines <= len(mineNodes)):
                     return newGame, mineNodes
         else:
             neighbors, mineCounter = getNeighbors((x,y), dim)
@@ -133,7 +130,7 @@ def playMineSweeperAgent1(referenceBoard, dim, totalMines = None):
                     nX, nY = neighbor
                     probabilityBoard[nX][nY].p = 0
                     safeBoard[nX][nY] = 1
-                    if(neighbor not in visited):
+                    if((neighbor not in visited) and (neighbor not in iterateNodes)):
                         iterateNodes.insert(0, (neighbor))
             else:                                       #compute and infer the neighbors
                 # first remove all the neighbors that have been known as either safe or as mines
@@ -160,7 +157,7 @@ def playMineSweeperAgent1(referenceBoard, dim, totalMines = None):
                             iterateNodes.remove(unknownNeighbor)
                         # removeFromIterateList(unknownNeighbor, iterateNodes)
                         if (totalMines):
-                            if (totalMines >= len(mineNodes)):
+                            if (totalMines <= len(mineNodes)):
                                 return newGame, mineNodes
                 else : # infer about them as we dont knwo what they might be
                     for unknownNeighbor in unknownNeighbors:
@@ -170,10 +167,14 @@ def playMineSweeperAgent1(referenceBoard, dim, totalMines = None):
                         safeBoard[nX][nY] = 2
                         p = probabilityBoard[nX][nY].p
                         numNeighbor = probabilityBoard[nX][nY].numNeighbor
-                        probabilityBoard[nX][nY].p = (p*numNeighbor + mineCounter/len(unknownNeighbors))/(numNeighbor+1)
+                        if (p != 0):
+                            probabilityBoard[nX][nY].p = (p*numNeighbor + mineCounter/len(unknownNeighbors))/(numNeighbor+1)
                         probabilityBoard[nX][nY].numNeighbor = numNeighbor+1
-                        if(neighbor not in visited):
+                        if(unknownNeighbor not in visited):
                             iterateNodes = updateIterateNodes(iterateNodes, unknownNeighbor, probabilityBoard)
+        file.write("  ----- Turn " + str(turn) + " -----\n\n")
+        file.write("total mines open: " + str(len(mineNodes)) + "\n\n")
+        writeGridToFile(newGame)
         turn += 1
 
 
@@ -190,21 +191,10 @@ def isAMine(node, mineList):
     return False
 
 dim = int(input("What are the dimensions of the grid? "))
-n = int(input("How many mines should there be?"))
+n = int(input("How many mines should there be? "))
 
 referenceBoard, mineList = generateBoard(dim, n)
-'''
-logic for the minesweeper
 
-1. start at a randon (x,y)
-2. query and see if there is a mine, 
-    if there is , acknowldge a new grid , put it in the mine list, check and remove if it is in the maybe list and then go to  new one,
-    otherwise , get its neighbors, and the number of mines surrounding it,
-    
-3. check with the 'cleared' list to see to find out which neighbor we are certain and for which we arent, after which we add it to maybe list 
-4. iterate first through the cleared list, then maybe, if both are empty then at random to the one that is not visited at all and start building the list, 
-
-'''
 file = open('output.txt', 'w')
 file.write('  ----- Initial Grid -----\n\n')
 writeGridToFile(referenceBoard)
@@ -213,12 +203,20 @@ for m in mineList:
     file.write(str(m))
     file.write('\n')
 file.write('\n')
-game, nlist = playMineSweeperAgent1(referenceBoard, dim)
+question2 = str(input('Do you want to tell the agent how many total mines there are? (y/n): '))
+if (question2 == 'y'):
+    game, nlist = playMineSweeperAgent1(referenceBoard, dim, len(mineList))
+else:
+    game, nlist = playMineSweeperAgent1(referenceBoard, dim)
 file.write('  ----- Final Result -----\n\n')
 writeGridToFile(game)
 file.write('Mines \t Blown(Stepped on Mine)\n\n')
+safeMines = 0
 for discoveredMine in nlist:
+    if (discoveredMine.blown == False):
+        safeMines += 1
     file.write(str(discoveredMine.node) + ' \t ' + str(discoveredMine.blown) )
     file.write('\n')
-file.close()
+file.write('We found ' + str(safeMines) + ' mines out of ' + str(len(mineList)) + ' without stepping on them!\n')
+file.close() 
 # print (nlist)

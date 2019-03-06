@@ -1,5 +1,3 @@
-
-import numpy
 class mine:
     def __init__(self, node, blown):
         self.node = node
